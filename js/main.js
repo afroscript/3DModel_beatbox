@@ -13,6 +13,42 @@ var orbitContlols;
 
 var line;
 
+// PCのマイクから音をひろってくる
+
+var audioctx = new AudioContext();
+
+var analyser = audioctx.createAnalyser();
+analyser.fftSize = 128;
+analyser.minDecibels = -100;
+analyser.maxDecibels = -30;
+
+var obj0;
+var objs = [];
+var num = 6;
+
+var getUserMedia = navigator.getUserMedia ? 'getUserMedia' :
+    navigator.webkitGetUserMedia ? 'webkitGetUserMedia' :
+    navigator.mozGetUserMedia ? 'mozGetUserMedia' :
+    navigator.msGetUserMedia ? 'msGetUserMedia' :
+    undefined; 
+var astream, micsrc;
+var conditions={audio:true, video:false};
+
+const Mic = () => {
+    navigator[getUserMedia](
+        conditions,
+        (stream) => {
+            astream=stream;
+            micsrc=audioctx.createMediaStreamSource(stream);
+            micsrc.connect(audioctx.destination);
+            micsrc.connect(analyser);
+        },
+        (e) => { console.error(e); }
+    );
+}
+
+Mic(); //Mic集音開始
+
 init();
 animate();
 
@@ -67,9 +103,6 @@ function init() {
 
     window.addEventListener( 'resize', onWindowResize, false );
 
-    // createLine
-    createLine();
-
 }
 
 function onWindowResize() {
@@ -93,10 +126,17 @@ function onDocumentMouseMove( event ) {
 
 function createLine() {
 
+    scene.remove(line)
+
+    var data = new Uint8Array(512);
+
+    analyser.getByteFrequencyData(data); //Spectrum Dataの取得
+    // analyser.getByteTimeDomainData(data); //Waveform Dataの取得
+
     var lineGeometry = new THREE.Geometry();
     for(var i = 0; i < 32; ++i) {
         lineGeometry.vertices.push(
-            new THREE.Vector3( i * 10, Math.random() * 10, 0 )
+            new THREE.Vector3( i * 10, data[i] * 0.7, 0 )
         ); 
     }
 
@@ -120,6 +160,9 @@ function animate() {
 }
 
 function render() {
+
+    // createLine
+    createLine();
 
     camera.lookAt( scene.position );
 
